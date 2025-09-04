@@ -115,7 +115,7 @@ const ChatWidget = () => {
     { id: 1, text: "Hi there! I'm Bikram.AI. Think of me as Bikram's digital twin! I can tell you about my skills, projects, or experiences. What would you like to know?", sender: "bot", timestamp: new Date() },
   ]);
   const [inputMessage, setInputMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping, setIsTyping] = useState(false); 
   const chatEndRef = useRef(null);
   const [minimized, setMinimized] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
