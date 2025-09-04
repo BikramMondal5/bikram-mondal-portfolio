@@ -1,6 +1,6 @@
 import { BrowserRouter } from "react-router-dom";
 import { About, Cards, Contact, Hero, Navbar, Tech, Works, StarsCanvas } from "./components";
-import SafeChatWidget from "./components/SafeChatWidget";
+import ChatWidget from "./components/ChatWidget";
 
 const App = () => {
   return (
@@ -18,7 +18,7 @@ const App = () => {
           <Contact />
           <StarsCanvas />
         </div>
-        <SafeChatWidget />
+        <ChatWidget />
       </div>
     </BrowserRouter>
   );

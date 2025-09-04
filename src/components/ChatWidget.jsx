@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiSend, FiMic, FiMinimize2, FiMaximize2 } from "react-icons/fi";
-import { FaAt } from "react-icons/fa";
 import { BsThreeDots } from "react-icons/bs";
 import { styles } from "../styles";
 // Import React Markdown and its plugins
@@ -122,9 +121,6 @@ const ChatWidget = () => {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
   const [isListening, setIsListening] = useState(false);
-  const dropdownRef = useRef(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [activeMode, setActiveMode] = useState("AI Mode");
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -134,22 +130,6 @@ const ChatWidget = () => {
       console.warn('Scroll error:', error);
     }
   }, [messages]);
-  
-  // Click outside listener to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      try {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setDropdownOpen(false);
-        }
-      } catch (error) {
-        console.warn('Click outside error:', error);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Initialize speech recognition only on client side
   useEffect(() => {
@@ -513,39 +493,6 @@ const ChatWidget = () => {
 
           {!minimized && (
             <div className="bg-[#1a1a1a] p-3 border-t border-[#333] flex items-center gap-2">
-              <button 
-                className="text-purple-400 hover:text-purple-300 p-2 rounded-full hover:bg-white/5 transition-colors"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                ref={dropdownRef}
-              >
-                <FaAt className="w-5 h-5" />
-              </button>
-              
-              {dropdownOpen && (
-                <div className="absolute bottom-16 left-5 bg-[#262626] rounded-lg shadow-lg border border-[#333] w-36 overflow-hidden z-10">
-                  <div className="py-1">
-                    <button 
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#333]"
-                      onClick={() => {
-                        setActiveMode("AI Mode");
-                        setDropdownOpen(false);
-                      }}
-                    >
-                      AI Mode
-                    </button>
-                    <button 
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#333]"
-                      onClick={() => {
-                        setActiveMode("Agent Mode");
-                        setDropdownOpen(false);
-                      }}
-                    >
-                      Agent Mode
-                    </button>
-                  </div>
-                </div>
-              )}
-              
               <input
                 type="text"
                 value={inputMessage}
