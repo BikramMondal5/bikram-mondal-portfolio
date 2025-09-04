@@ -7,7 +7,8 @@ import Works from "./Works";
 import Contact from "./Contact";
 import CanvasLoader from "./Loader";
 import Cards from "./Cards";
-import ChatWidget from "./ChatWidget";
+// Dynamic import handled directly in App.jsx
+// No need to import and re-export ChatWidget here
 
 
 export {
@@ -19,7 +20,6 @@ export {
   Contact,
   Cards,
   CanvasLoader,
-  ChatWidget,
   EarthCanvas, 
   BallCanvas, 
   ComputersCanvas, 

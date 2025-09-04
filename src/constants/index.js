@@ -207,7 +207,7 @@ const projects = [
     description:
       "An AI-powered flask application where user can interact with different generative AI including advanced LLMs GPT-40, DeepSeek, Gemini 2.0 Flash, Mistral AI and many more",
     tags: [],
-    image: "src/assets/Landing-page.png",
+    image: "https://github.com/BikramMondal5/Articuno.AI/raw/main/static/icons/Landing-page.png",
     source_code_link: "https://github.com/BikramMondal5/Edubyte",
   },
   {

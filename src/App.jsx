@@ -1,5 +1,9 @@
 import { BrowserRouter } from "react-router-dom";
-import { About, Cards, Contact, Hero, Navbar, Tech, Works, StarsCanvas, ChatWidget } from "./components";
+import { About, Cards, Contact, Hero, Navbar, Tech, Works, StarsCanvas } from "./components";
+import { lazy, Suspense } from "react";
+
+// Use lazy loading for ChatWidget to ensure it only loads on client-side
+const ChatWidget = lazy(() => import("./components/ChatWidget"));
 
 const App = () => {
   return (
@@ -17,7 +21,9 @@ const App = () => {
           <Contact />
           <StarsCanvas />
         </div>
-        <ChatWidget />
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
       </div>
     </BrowserRouter>
   );

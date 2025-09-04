@@ -11,26 +11,34 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
 // Speech Recognition setup with better error handling
-let SpeechRecognition, recognition;
+let SpeechRecognition = null;
+let recognition = null;
 
-// Only initialize speech recognition in browser environment
-if (typeof window !== 'undefined') {
-  SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
+// Defer speech recognition initialization to useEffect to ensure it only runs client-side
+const initializeSpeechRecognition = () => {
+  if (typeof window !== 'undefined' && !recognition) {
     try {
-      recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognitionAPI) {
+        SpeechRecognition = SpeechRecognitionAPI;
+        recognition = new SpeechRecognitionAPI();
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        return recognition;
+      }
     } catch (error) {
       console.warn('Speech Recognition initialization failed:', error);
-      recognition = null;
     }
   }
+  return null;
 }
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+// Safer API key access that doesn't break if environment variable is missing
+const API_KEY = typeof import.meta !== 'undefined' && import.meta.env 
+  ? import.meta.env.VITE_GEMINI_API_KEY 
+  : '';
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 // Fallback responses for when the API fails
@@ -143,22 +151,25 @@ const ChatWidget = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Initialize speech recognition
+  // Initialize speech recognition only on client side
   useEffect(() => {
-    if (!recognition) return;
+    // Initialize speech recognition on component mount
+    const recognitionInstance = initializeSpeechRecognition();
+    
+    if (!recognitionInstance) return;
     
     try {
-      recognition.onresult = (event) => {
+      recognitionInstance.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setInputMessage(transcript);
         setIsListening(false);
       };
 
-      recognition.onend = () => {
+      recognitionInstance.onend = () => {
         setIsListening(false);
       };
 
-      recognition.onerror = (event) => {
+      recognitionInstance.onerror = (event) => {
         console.error("Speech recognition error", event.error);
         setIsListening(false);
       };
@@ -168,8 +179,8 @@ const ChatWidget = () => {
     
     return () => {
       try {
-        if (recognition) {
-          recognition.stop();
+        if (recognitionInstance) {
+          recognitionInstance.stop();
         }
       } catch (error) {
         console.warn('Speech recognition cleanup failed:', error);
@@ -348,17 +359,20 @@ const ChatWidget = () => {
   };
 
   const handleMicClick = () => {
-    if (!recognition) {
+    // Attempt to initialize if not already done
+    const recognitionInstance = recognition || initializeSpeechRecognition();
+    
+    if (!recognitionInstance) {
       console.warn("Speech recognition is not supported in your browser");
       return;
     }
 
     try {
       if (isListening) {
-        recognition.stop();
+        recognitionInstance.stop();
         setIsListening(false);
       } else {
-        recognition.start();
+        recognitionInstance.start();
         setIsListening(true);
       }
     } catch (error) {
@@ -560,4 +574,6 @@ const ChatWidget = () => {
   );
 };
 
-export default ChatWidget;
+// Only export component if we're in a browser environment
+const SafeChatWidget = typeof window !== 'undefined' ? ChatWidget : () => null;
+export default SafeChatWidget;
