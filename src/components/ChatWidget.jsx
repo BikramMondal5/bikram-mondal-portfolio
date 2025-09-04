@@ -121,6 +121,9 @@ const ChatWidget = () => {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
   const [isListening, setIsListening] = useState(false);
+  
+  // Reference to store Three.js canvases that we'll pause when chat is open
+  const [threeCanvases, setThreeCanvases] = useState([]);
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -130,6 +133,71 @@ const ChatWidget = () => {
       console.warn('Scroll error:', error);
     }
   }, [messages]);
+  
+  // Handle Three.js canvas pausing when chat widget opens
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Find all Three.js canvases in the document
+    const findThreeCanvases = () => {
+      try {
+        // Find all canvases that might be Three.js instances
+        const canvases = document.querySelectorAll('canvas');
+        setThreeCanvases(Array.from(canvases));
+      } catch (error) {
+        console.warn('Error finding Three.js canvases:', error);
+      }
+    };
+    
+    // Only find canvases when the chat widget opens
+    if (isOpen) {
+      findThreeCanvases();
+      
+      // Apply a style to prevent WebGL context issues
+      threeCanvases.forEach(canvas => {
+        try {
+          if (canvas && canvas.style) {
+            // Save the current style
+            canvas.dataset.originalVisibility = canvas.style.visibility || '';
+            canvas.dataset.originalOpacity = canvas.style.opacity || '';
+            
+            // Apply new style to prevent rendering conflicts
+            canvas.style.visibility = 'hidden';
+            canvas.style.opacity = '0';
+          }
+        } catch (err) {
+          console.warn('Error modifying canvas:', err);
+        }
+      });
+    } else {
+      // Restore canvas styles when chat widget closes
+      threeCanvases.forEach(canvas => {
+        try {
+          if (canvas && canvas.style) {
+            canvas.style.visibility = canvas.dataset.originalVisibility || '';
+            canvas.style.opacity = canvas.dataset.originalOpacity || '';
+          }
+        } catch (err) {
+          console.warn('Error restoring canvas:', err);
+        }
+      });
+    }
+    
+    // Cleanup function
+    return () => {
+      // Restore all canvases on component unmount
+      threeCanvases.forEach(canvas => {
+        try {
+          if (canvas && canvas.style) {
+            canvas.style.visibility = canvas.dataset.originalVisibility || '';
+            canvas.style.opacity = canvas.dataset.originalOpacity || '';
+          }
+        } catch (err) {
+          console.warn('Error in cleanup:', err);
+        }
+      });
+    };
+  }, [isOpen, threeCanvases]);
 
   // Initialize speech recognition only on client side
   useEffect(() => {
@@ -361,10 +429,29 @@ const ChatWidget = () => {
     }
   };
 
+  // Safe function to toggle chat widget
+  const toggleChatWidget = () => {
+    try {
+      // If we're opening the widget, we need to handle Three.js conflicts
+      if (!isOpen) {
+        // Force any WebGL renderer to complete current operations
+        setTimeout(() => {
+          setIsOpen(true);
+        }, 0);
+      } else {
+        setIsOpen(false);
+      }
+    } catch (error) {
+      console.error("Error toggling chat widget:", error);
+      // Fallback in case of error
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <>
       <motion.button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleChatWidget}
         className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 p-0 border-2 border-white/20"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
@@ -390,6 +477,7 @@ const ChatWidget = () => {
           animate="open"
           exit="closed"
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          style={{ zIndex: 9999 }} // Ensure it's on top
         >
           <div className="bg-gradient-to-r from-[#7c3aed] to-[#9b5de5] p-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -521,6 +609,35 @@ const ChatWidget = () => {
   );
 };
 
+// Wrap the chat widget in error handling
+const SafeChatWidget = () => {
+  const [hasError, setHasError] = useState(false);
+  
+  if (hasError) {
+    return (
+      <motion.button
+        onClick={() => window.location.reload()}
+        className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-orange-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 p-0 border-2 border-white/20"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </motion.button>
+    );
+  }
+  
+  // Error boundary implementation using try/catch
+  try {
+    return <ChatWidget />;
+  } catch (error) {
+    console.error("Error rendering ChatWidget:", error);
+    setHasError(true);
+    return null;
+  }
+};
+
 // Only export component if we're in a browser environment
-const SafeChatWidget = typeof window !== 'undefined' ? ChatWidget : () => null;
-export default SafeChatWidget;
+const BrowserSafeChatWidget = typeof window !== 'undefined' ? SafeChatWidget : () => null;
+export default BrowserSafeChatWidget;
