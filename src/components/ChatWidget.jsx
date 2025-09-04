@@ -9,6 +9,12 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
+// Import process stub to prevent browser errors
+import '../utils/process-stub';
+
+// Import Three.js context to manage Three.js when chat is open
+import { useThreeJs } from "../utils/ThreeJsContext";
+
 // Speech Recognition setup with better error handling
 let SpeechRecognition = null;
 let recognition = null;
@@ -110,6 +116,9 @@ Expected Behaviors:
 Keep your responses concise in 3-4 lines until long response is not required, informative, personal (using "I"), and conversational.`;
 
 const ChatWidget = () => {
+  // Use the ThreeJs context to manage Three.js rendering
+  const { pauseThreeJs, resumeThreeJs } = useThreeJs();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     { id: 1, text: "Hi there! I'm Bikram.AI. Think of me as Bikram's digital twin! I can tell you about my skills, projects, or experiences. What would you like to know?", sender: "bot", timestamp: new Date() },
@@ -121,9 +130,6 @@ const ChatWidget = () => {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
   const [isListening, setIsListening] = useState(false);
-  
-  // Reference to store Three.js canvases that we'll pause when chat is open
-  const [threeCanvases, setThreeCanvases] = useState([]);
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -134,70 +140,22 @@ const ChatWidget = () => {
     }
   }, [messages]);
   
-  // Handle Three.js canvas pausing when chat widget opens
+  // Handle pausing/resuming Three.js when chat opens/closes
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
-    // Find all Three.js canvases in the document
-    const findThreeCanvases = () => {
-      try {
-        // Find all canvases that might be Three.js instances
-        const canvases = document.querySelectorAll('canvas');
-        setThreeCanvases(Array.from(canvases));
-      } catch (error) {
-        console.warn('Error finding Three.js canvases:', error);
-      }
-    };
-    
-    // Only find canvases when the chat widget opens
+
+    // If chat is open, pause Three.js, otherwise resume it
     if (isOpen) {
-      findThreeCanvases();
-      
-      // Apply a style to prevent WebGL context issues
-      threeCanvases.forEach(canvas => {
-        try {
-          if (canvas && canvas.style) {
-            // Save the current style
-            canvas.dataset.originalVisibility = canvas.style.visibility || '';
-            canvas.dataset.originalOpacity = canvas.style.opacity || '';
-            
-            // Apply new style to prevent rendering conflicts
-            canvas.style.visibility = 'hidden';
-            canvas.style.opacity = '0';
-          }
-        } catch (err) {
-          console.warn('Error modifying canvas:', err);
-        }
-      });
+      pauseThreeJs();
     } else {
-      // Restore canvas styles when chat widget closes
-      threeCanvases.forEach(canvas => {
-        try {
-          if (canvas && canvas.style) {
-            canvas.style.visibility = canvas.dataset.originalVisibility || '';
-            canvas.style.opacity = canvas.dataset.originalOpacity || '';
-          }
-        } catch (err) {
-          console.warn('Error restoring canvas:', err);
-        }
-      });
+      resumeThreeJs();
     }
-    
-    // Cleanup function
+
     return () => {
-      // Restore all canvases on component unmount
-      threeCanvases.forEach(canvas => {
-        try {
-          if (canvas && canvas.style) {
-            canvas.style.visibility = canvas.dataset.originalVisibility || '';
-            canvas.style.opacity = canvas.dataset.originalOpacity || '';
-          }
-        } catch (err) {
-          console.warn('Error in cleanup:', err);
-        }
-      });
+      // Always resume Three.js when component unmounts
+      resumeThreeJs();
     };
-  }, [isOpen, threeCanvases]);
+  }, [isOpen, pauseThreeJs, resumeThreeJs]);
 
   // Initialize speech recognition only on client side
   useEffect(() => {
@@ -432,14 +390,33 @@ const ChatWidget = () => {
   // Safe function to toggle chat widget
   const toggleChatWidget = () => {
     try {
+      // Make sure process is defined to prevent Node.js errors
+      if (typeof window !== 'undefined' && !window.process) {
+        window.process = { cwd: () => '/', env: {}, browser: true };
+      }
+      
       // If we're opening the widget, we need to handle Three.js conflicts
       if (!isOpen) {
-        // Force any WebGL renderer to complete current operations
+        // Pause Three.js and ensure WebGL context is preserved
+        pauseThreeJs();
+        
+        // Force any WebGL renderer to complete current operations before opening chat
         setTimeout(() => {
+          // Set a global flag to help debug WebGL issues
+          if (typeof window !== 'undefined') {
+            window.__chatWidgetOpen = true;
+          }
           setIsOpen(true);
-        }, 0);
+        }, 50);
       } else {
+        if (typeof window !== 'undefined') {
+          window.__chatWidgetOpen = false;
+        }
         setIsOpen(false);
+        // Resume Three.js rendering with a delay to ensure smooth transition
+        setTimeout(() => {
+          resumeThreeJs();
+        }, 50);
       }
     } catch (error) {
       console.error("Error toggling chat widget:", error);
