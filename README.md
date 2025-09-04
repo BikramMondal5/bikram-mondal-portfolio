@@ -4,7 +4,7 @@
 ![React](https://img.shields.io/badge/React-18-blue?logo=react)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-Latest-38bdf8?logo=tailwind-css)
 
-![Portfolio Screenshot](src/assets/screenshot.png) 
+![Portfolio Screenshot](src/assets/screenshot.png)
 
 ## 📋 Overview
 
