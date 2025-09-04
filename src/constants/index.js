@@ -212,7 +212,7 @@ const projects = [
         color: "blue-text-gradient",
       }
     ],
-    image: "https://github.com/BikramMondal5/Articuno.AI/raw/main/static/icons/Landing-page.png",
+    image: "src/assets/Landing-page.png",
     source_code_link: "https://github.com/BikramMondal5/Edubyte",
   },
   {
