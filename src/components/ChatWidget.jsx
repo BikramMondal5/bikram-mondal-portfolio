@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiSend, FiMic, FiMinimize2, FiMaximize2 } from "react-icons/fi";
-import { FaAt } from "react-icons/fa"; // Add @ icon
+import { FaAt } from "react-icons/fa";
 import { BsThreeDots } from "react-icons/bs";
 import { styles } from "../styles";
 // Import React Markdown and its plugins
@@ -10,15 +10,24 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
-// Speech Recognition setup
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+// Speech Recognition setup with better error handling
+let SpeechRecognition, recognition;
 
-if (recognition) {
-  recognition.continuous = false;
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+// Only initialize speech recognition in browser environment
+if (typeof window !== 'undefined') {
+  SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    try {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    } catch (error) {
+      console.warn('Speech Recognition initialization failed:', error);
+      recognition = null;
+    }
+  }
 }
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -103,22 +112,30 @@ const ChatWidget = () => {
   const chatEndRef = useRef(null);
   const [minimized, setMinimized] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2; // Maximum number of retry attempts
+  const maxRetries = 2;
   const [isListening, setIsListening] = useState(false);
   const dropdownRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [activeMode, setActiveMode] = useState("AI Mode"); // Default to AI Mode
+  const [activeMode, setActiveMode] = useState("AI Mode");
 
   // Auto scroll to bottom of chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    try {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+      console.warn('Scroll error:', error);
+    }
   }, [messages]);
   
   // Click outside listener to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
+      try {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setDropdownOpen(false);
+        }
+      } catch (error) {
+        console.warn('Click outside error:', error);
       }
     };
 
@@ -130,24 +147,32 @@ const ChatWidget = () => {
   useEffect(() => {
     if (!recognition) return;
     
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setInputMessage(transcript);
-      setIsListening(false);
-    };
+    try {
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputMessage(transcript);
+        setIsListening(false);
+      };
 
-    recognition.onend = () => {
-      setIsListening(false);
-    };
+      recognition.onend = () => {
+        setIsListening(false);
+      };
 
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      setIsListening(false);
-    };
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+    } catch (error) {
+      console.warn('Speech recognition setup failed:', error);
+    }
     
     return () => {
-      if (recognition) {
-        recognition.stop();
+      try {
+        if (recognition) {
+          recognition.stop();
+        }
+      } catch (error) {
+        console.warn('Speech recognition cleanup failed:', error);
       }
     };
   }, []);
@@ -177,6 +202,12 @@ const ChatWidget = () => {
   };
 
   const fetchGeminiResponse = async (userMessage) => {
+    // Check if API key is available
+    if (!API_KEY) {
+      console.warn('Gemini API key not found, using fallback response');
+      throw new Error('API key not configured');
+    }
+
     try {
       const response = await fetchWithTimeout(
         `${API_URL}?key=${API_KEY}`, 
@@ -199,13 +230,12 @@ const ChatWidget = () => {
             ]
           })
         },
-        15000 // 15 second timeout
+        15000
       );
 
       const data = await response.json();
       
       if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        // Reset retry count on successful response
         setRetryCount(0);
         return data.candidates[0].content.parts[0].text;
       } else if (data.error) {
@@ -223,98 +253,88 @@ const ChatWidget = () => {
   const handleSendMessage = async () => {
     if (inputMessage.trim() === "") return;
 
-    // Add user message
-    const newUserMessage = {
-      id: messages.length + 1,
-      text: inputMessage,
-      sender: "user",
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, newUserMessage]);
-    setInputMessage("");
-    
-    // Show bot typing indicator
-    setIsTyping(true);
-    
-    // Store the message to use in retries
-    const currentMessage = inputMessage;
-    
-    // Set a timeout for the typing indicator in case of very long delays
-    const typingTimeout = setTimeout(() => {
-      // If still typing after 20 seconds, show a temporary message
-      if (isTyping) {
-        const tempMessage = {
-          id: `temp-${Date.now()}`,
-          text: "I'm still thinking about your question. One moment please...",
+    try {
+      const newUserMessage = {
+        id: messages.length + 1,
+        text: inputMessage,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, newUserMessage]);
+      setInputMessage("");
+      setIsTyping(true);
+      
+      const currentMessage = inputMessage;
+      
+      const typingTimeout = setTimeout(() => {
+        if (isTyping) {
+          const tempMessage = {
+            id: `temp-${Date.now()}`,
+            text: "I'm still thinking about your question. One moment please...",
+            sender: "bot",
+            timestamp: new Date(),
+            isTemporary: true
+          };
+          setMessages(prev => [...prev, tempMessage]);
+        }
+      }, 20000);
+      
+      try {
+        let response;
+        try {
+          response = await fetchGeminiResponse(currentMessage);
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            setRetryCount(prev => prev + 1);
+            console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            response = await fetchGeminiResponse(currentMessage);
+          } else {
+            throw new Error("Max retries reached");
+          }
+        }
+        
+        setMessages(prev => prev.filter(msg => !msg.isTemporary));
+        
+        const botResponse = {
+          id: messages.length + 2,
+          text: response,
           sender: "bot",
           timestamp: new Date(),
-          isTemporary: true
         };
         
-        setMessages(prev => [...prev, tempMessage]);
-      }
-    }, 20000);
-    
-    // Get response from Gemini with retry logic
-    try {
-      let response;
-      try {
-        response = await fetchGeminiResponse(currentMessage);
+        setMessages((prev) => [...prev, botResponse]);
       } catch (error) {
-        // First retry attempt if we haven't exceeded max retries
-        if (retryCount < maxRetries) {
-          setRetryCount(prev => prev + 1);
-          console.log(`Retry attempt ${retryCount + 1}/${maxRetries}`);
-          // Small delay before retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          response = await fetchGeminiResponse(currentMessage);
-        } else {
-          // All retries failed, use fallback
-          throw new Error("Max retries reached");
-        }
+        console.error("Error in AI response:", error);
+        
+        setMessages(prev => prev.filter(msg => !msg.isTemporary));
+        
+        const fallbackText = getFallbackResponse();
+        const errorResponse = {
+          id: messages.length + 2,
+          text: fallbackText,
+          sender: "bot",
+          timestamp: new Date(),
+        };
+        
+        setMessages((prev) => [...prev, errorResponse]);
+      } finally {
+        clearTimeout(typingTimeout);
+        setIsTyping(false);
       }
-      
-      // Remove any temporary messages first
-      setMessages(prev => prev.filter(msg => !msg.isTemporary));
-      
-      const botResponse = {
-        id: messages.length + 2,
-        text: response,
-        sender: "bot",
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, botResponse]);
     } catch (error) {
-      console.error("Error in AI response:", error);
-      
-      // Remove any temporary messages first
-      setMessages(prev => prev.filter(msg => !msg.isTemporary));
-      
-      const fallbackText = getFallbackResponse();
-      const errorResponse = {
-        id: messages.length + 2,
-        text: fallbackText,
-        sender: "bot",
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, errorResponse]);
-    } finally {
-      clearTimeout(typingTimeout);
+      console.error("Error in handleSendMessage:", error);
       setIsTyping(false);
     }
   };
 
   const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Animation variants
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
+    try {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      return "00:00";
+    }
   };
 
   const widgetVariants = {
@@ -327,25 +347,28 @@ const ChatWidget = () => {
     visible: { opacity: 1, x: 0 },
   };
 
-  // Handle microphone button click
   const handleMicClick = () => {
     if (!recognition) {
-      alert("Speech recognition is not supported in your browser");
+      console.warn("Speech recognition is not supported in your browser");
       return;
     }
 
-    if (isListening) {
-      recognition.stop();
+    try {
+      if (isListening) {
+        recognition.stop();
+        setIsListening(false);
+      } else {
+        recognition.start();
+        setIsListening(true);
+      }
+    } catch (error) {
+      console.error("Speech recognition error:", error);
       setIsListening(false);
-    } else {
-      recognition.start();
-      setIsListening(true);
     }
   };
 
   return (
     <>
-      {/* Chat toggle button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 p-0 border-2 border-white/20"
@@ -365,7 +388,6 @@ const ChatWidget = () => {
         )}
       </motion.button>
 
-      {/* Chat widget */}
       {isOpen && (
         <motion.div
           className="fixed bottom-24 right-5 w-80 sm:w-96 rounded-2xl overflow-hidden shadow-2xl border2 border-purple-600/30"
@@ -375,7 +397,6 @@ const ChatWidget = () => {
           exit="closed"
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
         >
-          {/* Header */}
           <div className="bg-gradient-to-r from-[#7c3aed] to-[#9b5de5] p-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
@@ -400,7 +421,6 @@ const ChatWidget = () => {
             </div>
           </div>
 
-          {/* Chat messages */}
           {!minimized && (
             <div 
               className="bg-[#121212] h-96 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent"
@@ -458,7 +478,6 @@ const ChatWidget = () => {
                 </motion.div>
               ))}
 
-              {/* Typing indicator */}
               {isTyping && (
                 <motion.div
                   className="flex justify-start"
@@ -478,7 +497,6 @@ const ChatWidget = () => {
             </div>
           )}
 
-          {/* Input area */}
           {!minimized && (
             <div className="bg-[#1a1a1a] p-3 border-t border-[#333] flex items-center gap-2">
               <button 

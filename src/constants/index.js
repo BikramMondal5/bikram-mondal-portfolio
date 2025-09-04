@@ -206,12 +206,7 @@ const projects = [
     name: "🤖🪄 Articuno.AI",
     description:
       "An AI-powered flask application where user can interact with different generative AI including advanced LLMs GPT-40, DeepSeek, Gemini 2.0 Flash, Mistral AI and many more",
-    tags: [
-      {
-        name: "Hobby Project",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: "src/assets/Landing-page.png",
     source_code_link: "https://github.com/BikramMondal5/Edubyte",
   },
@@ -219,12 +214,7 @@ const projects = [
     name: "🕉️🔱 Project-Trinoyon",
     description:
       "A small initiative to make this Durga Puja truly a celebration for all! This project dedicated to bringing smiles to the lives of homeless community during Durga Puja.",
-    tags: [
-      {
-        name: "Team Work",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: Trinoyon,
     source_code_link: "https://github.com/BikramMondal5/Project-Trinoyon",
   },
@@ -232,12 +222,7 @@ const projects = [
     name: "🌾🚜 KrishiMitra",
     description:
       "An AI-powered agricultural platform that empowers farmers with real-time insights, crop recommendations, weather updates and sustainable farming support.",
-    tags: [
-      {
-        name: "Hobby Project",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: KrishiMitra,
     source_code_link: "https://github.com/BikramMondal5/KrishiMitra",
   },
@@ -245,12 +230,7 @@ const projects = [
     name: "🪄📄 MagicFill",
     description:
       "MagicFill is an AI-powered platform that auto-fills application forms and helps people especially in rural and underserved communities in India — by removing barriers of complex form-based processes.",
-    tags: [
-      {
-        name: "Hobby Project",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: MagicFill,
     source_code_link: "https://github.com/BikramMondal5/MagicFill",
   },
@@ -258,12 +238,7 @@ const projects = [
     name: "📝✨ Github Readme Generator",
     description:
       "📝✨ A simple, light-weight, client side tool that allows users to generate the professional readme file for Github using Gemini API key",
-    tags: [
-      {
-        name: "Hobby Project",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: GithubReadmeGenerator,
     source_code_link: "https://github.com/BikramMondal5/Github-readme-generator",
   },
@@ -271,12 +246,7 @@ const projects = [
     name: "🎬📄 YouTube Video Summarizer",
     description:
       "A lightweight web app that uses OpenAI's GPT‑4o to generate concise, well‑structured summaries of YouTube videos from a URL.",
-    tags: [
-      {
-        name: "Hobby Project",
-        color: "blue-text-gradient",
-      }
-    ],
+    tags: [],
     image: YouTubeSummarizer,
     source_code_link: "https://github.com/BikramMondal5/YouTube-Video-Summarizer",
   },
