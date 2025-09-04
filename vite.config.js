@@ -7,9 +7,15 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // Add alias for #minpath used by vfile
+      // Add aliases for Node.js internal modules used by vfile
       '#minpath': path.resolve(__dirname, 'node_modules/path-browserify/index.js'),
+      '#minproc': path.resolve(__dirname, 'node_modules/process/browser.js'),
+      '#minurl': path.resolve(__dirname, 'node_modules/url/url.js'),
+      '#minfs': path.resolve(__dirname, 'src/utils/fs-stub.js'),
     }
+  },
+  define: {
+    global: 'globalThis',
   },
   build: {
     rollupOptions: {
